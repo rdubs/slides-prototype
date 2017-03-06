@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Slides API Quickstart</title>
+    <link rel="stylesheet" href="reveal.js-master/css/reveal.css">
+    <link rel="stylesheet" href="reveal.js-master/css/theme/white.css">
+    <meta charset='utf-8' />
+  </head>
+  <body>
+    <p>Google Slides API Quickstart</p>
+
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <button id="authorize-button" style="display: none;">Authorize</button>
+    <button id="signout-button" style="display: none;">Sign Out</button>
+
+    <pre id="content"></pre>
+
+    <!-- Slide Setup -->
+
+    <div class="reveal">
+      <div class="slides">
+          <!-- <section>First Slide</section>
+          <section>Second Slide</section> -->
+      </div>
+    </div>
+
+    <!-- <script src="reveal.js-master/lib/js/head.min.js"></script> -->
+    <script src="reveal.js-master/js/reveal.js"></script>
+   
+    <script>
+      // Required, even if empty.
+      Reveal.initialize({
+      });
+    </script>
+
+    <script type="text/javascript">
+      // Client ID and API key from the Developer Console
+      var CLIENT_ID = '171247937343-lpo93i31pue6rsmna75k1m4piqfo06bk.apps.googleusercontent.com';
+
+      // Object of API discovery doc URLs for APIs used by the quickstart
+      var DISCOVERY_DOCS = [
+        "https://slides.googleapis.com/$discovery/rest?version=v1",
+        "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"
+      ];
+
+      // Authorization scopes required by the API; multiple scopes can be
+      // included, separated by spaces.
+      var SCOPES = "https://www.googleapis.com/auth/presentations.readonly https://www.googleapis.com/auth/drive.metadata.readonly";
+
+      var authorizeButton = document.getElementById('authorize-button');
+      var signoutButton = document.getElementById('signout-button');
+
+      /**
+       *  On load, called to load the auth2 library and API client library.
+       */
+      function handleClientLoad() {
+        gapi.load('client:auth2', initClient);
+      }
+
+      /**
+       *  Initializes the API client library and sets up sign-in state
+       *  listeners.
+       */
+      function initClient() {
+        gapi.client.init({
+          discoveryDocs: DISCOVERY_DOCS,
+          clientId: CLIENT_ID,
+          scope: SCOPES
+        }).then(function () {
+          // Listen for sign-in state changes.
+          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+          // Handle the initial sign-in state.
+          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+          authorizeButton.onclick = handleAuthClick;
+          signoutButton.onclick = handleSignoutClick;
+        });
+      }
+
+      /**
+       *  Called when the signed in status changes, to update the UI
+       *  appropriately. After a sign-in, the API is called.
+       */
+      function updateSigninStatus(isSignedIn) {
+        if (isSignedIn) {
+          authorizeButton.style.display = 'none';
+          signoutButton.style.display = 'block';
+          listSlides();
+          //getSlideImages();
+        } else {
+          authorizeButton.style.display = 'block';
+          signoutButton.style.display = 'none';
+        }
+      }
+
+      /**
+       *  Sign in the user upon button click.
+       */
+      function handleAuthClick(event) {
+        gapi.auth2.getAuthInstance().signIn();
+      }
+
+      /**
+       *  Sign out the user upon button click.
+       */
+      function handleSignoutClick(event) {
+        gapi.auth2.getAuthInstance().signOut();
+      }
+
+      /**
+       * Append a pre element to the body containing the given message
+       * as its text node. Used to display the results of the API call.
+       *
+       * @param {string} message Text to be placed in pre element.
+       */
+      function appendPre(message) {
+        var pre = document.getElementById('content');
+        var textContent = document.createTextNode(message + '\n');
+        pre.appendChild(textContent);
+      }
+
+      /**
+       * Prints the number of slides and elements in a sample presentation:
+       * https://docs.google.com/presentation/d/1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc/edit
+       */
+      function listSlides() {
+        gapi.client.slides.presentations.get({
+          presentationId: '1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc'
+        }).then(function(response) {
+          var presentation = response.result;
+          // var length = presentation.slides.length;
+          // appendPre('The presentation contains ' + length + ' slides:');
+          for (i = 0; i < length; i++) {
+            (function(i) {
+              var slide = presentation.slides[i];
+              var id = slide.objectId;
+              // appendPre('- Slide has id:');
+
+              //download slide image
+              //var accessToken = gapi.auth.getToken().access_token;
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", 'https://docs.google.com/presentation/d/1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc/export/png?id=1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc&pageid=' + id, true);
+
+              xhr.responseType = 'blob';
+              
+              // xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+              xhr.setRequestHeader('Authorization', 'Bearer ');
+              xhr.onload = function() {
+                console.log(xhr);
+                debugger;
+
+                var src = window.URL.createObjectURL(xhr.response);
+                // convert to Base64
+                // var b64Response = btoa(unescape(encodeURIComponent(xhr.response)));
+                
+                // var b64Response = btoa(xhr.response);
+
+                // create an image
+                var outputImg = document.createElement('img');
+                // outputImg.src = 'data:image/svg;base64,' + b64Response;
+                outputImg.src = src;
+
+                // append it to your page
+                var slides = document.getElementsByClassName('slides')[0];
+                
+                var newSlide = document.createElement('SECTION');
+                if (i === 0) {
+                  newSlide.classList.add('present');
+                } else {
+                  newSlide.classList.add('future');
+                }
+                newSlide.appendChild(outputImg);
+                slides.appendChild(newSlide);
+                Reveal.sync();
+              };
+              xhr.send('alt=media');
+            })(i);
+          }
+        }, function(response) {
+          appendPre('Error: ' + response.result.error.message);
+        });
+      }
+      // 'https://docs.google.com/presentation/d/1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc/export/png?id=1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc&pageid=ge63a4b4_1_35'
+
+      // function downloadSlide(name, presentationId, slideId) {
+      //   var url = 'https://docs.google.com/presentation/d/' + presentationId +
+      //     '/export/png?id=' + presentationId + '&pageid=' + slideId; 
+      //   var options = {
+      //     headers: {
+      //       Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
+      //     }
+      //   };
+      //   var response = UrlFetchApp.fetch(url, options);
+      //   var image = response.getAs(MimeType.PNG);
+      //   image.setName(name);
+      //   DriveApp.createFile(image);
+    </script>
+
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>
+  </body>
+</html>
